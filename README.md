@@ -620,3 +620,232 @@ function warn(message, event) {
 ```html
 <input @keyup.page-down="onPageDown" />
 ```
+
+## Lifecycle hooks
+
+- update the DOM when data changes, runs functions
+- lifecycle hooks : `beforeCreate`, `created`, `beforeMount`, `mounted`, `beforeUpdate`, `updated`, `beforeDestroy`, `destroyed`,...
+- Registering Lifecycle Hooks:
+
+```js
+<script setup>
+  import {onMounted} from 'vue' onMounted(() =>{" "}
+  {console.log(`the component is now mounted.`)})
+</script>
+```
+
+## Watchers
+
+- perform "side effects" in reaction to state changes
+
+```js
+<script setup>
+import { ref, watch } from 'vue'
+
+const question = ref('')
+const answer = ref('Questions usually contain a question mark. ;-)')
+const loading = ref(false)
+
+// watch works directly on a ref
+watch(question, async (newQuestion, oldQuestion) => {
+  if (newQuestion.includes('?')) {
+    loading.value = true
+    answer.value = 'Thinking...'
+    try {
+      const res = await fetch('https://yesno.wtf/api')
+      answer.value = (await res.json()).answer
+    } catch (error) {
+      answer.value = 'Error! Could not reach the API. ' + error
+    } finally {
+      loading.value = false
+    }
+  }
+})
+</script>
+
+<template>
+  <p>
+    Ask a yes/no question:
+    <input v-model="question" :disabled="loading" />
+  </p>
+  <p>{{ answer }}</p>
+</template>
+```
+
+- Watch Source Types:
+
+```js
+const x = ref(0);
+const y = ref(0);
+
+// single ref
+watch(x, (newX) => {
+  console.log(`x is ${newX}`);
+});
+
+// getter
+watch(
+  () => x.value + y.value,
+  (sum) => {
+    console.log(`sum of x + y is: ${sum}`);
+  }
+);
+
+// array of multiple sources
+watch([x, () => y.value], ([newX, newY]) => {
+  console.log(`x is ${newX} and y is ${newY}`);
+});
+```
+
+- Deep Watchers:triggered on all nested mutations
+
+```js
+const obj = reactive({ count: 0 });
+
+watch(obj, (newValue, oldValue) => {
+  // fires on nested property mutations
+  // Note: `newValue` will be equal to `oldValue` here
+  // because they both point to the same object!
+});
+
+obj.count++;
+```
+
+- Eager Watchers:the callback won't be called until the watched source has changed.
+
+```js
+watch(
+  source,
+  (newValue, oldValue) => {
+    // executed immediately, then again when `source` changes
+  },
+  { immediate: true }
+);
+```
+
+- Once Watchers:trigger only once
+
+```js
+watch(
+  source,
+  (newValue, oldValue) => {
+    // when `source` changes, triggers only once
+  },
+  { once: true }
+);
+```
+
+- `watchEffect()`:track the callback's reactive dependencies automatically
+
+```js
+const todoId = ref(1);
+const data = ref(null);
+
+watch(
+  todoId,
+  async () => {
+    const response = await fetch(
+      `https://jsonplaceholder.typicode.com/todos/${todoId.value}`
+    );
+    data.value = await response.json();
+  },
+  { immediate: true }
+);
+```
+
+- `watch()` and `watchEffect()`:
+  - `watch` only tracks the explicitly watched source. It won't track anything accessed inside the callback.
+  - `watchEffect`: on the other hand,
+- Stopping a Watcher:stopped when the owner component is unmounted
+
+```js
+<script setup>
+  import {watchEffect} from 'vue' // this one will be automatically stopped
+  watchEffect(() => {}) // ...this one will not! setTimeout(() =>{" "}
+  {watchEffect(() => {})}, 100)
+</script>
+```
+
+## Template Refs:
+
+- access to the underlying DOM elements
+
+```html
+<script setup>
+  import { ref, onMounted } from "vue";
+
+  // declare a ref to hold the element reference
+  // the name must match template ref value
+  const input = ref(null);
+
+  onMounted(() => {
+    input.value.focus();
+  });
+</script>
+
+<template>
+  <input ref="input" />
+</template>
+```
+
+- Refs inside `v-for`
+
+```html
+<script setup>
+  import { ref, onMounted } from "vue";
+
+  const list = ref([
+    /* ... */
+  ]);
+
+  const itemRefs = ref([]);
+
+  onMounted(() => console.log(itemRefs.value));
+</script>
+
+<template>
+  <ul>
+    <li v-for="item in list" ref="itemRefs">{{ item }}</li>
+  </ul>
+</template>
+```
+
+- Function Refs:
+
+```html
+<input :ref="(el) => { /* assign el to a property or ref */ }" />
+```
+
+- Ref on Component:`ref` can also be used on a child component
+
+```html
+<script setup>
+  import { ref, onMounted } from "vue";
+  import Child from "./Child.vue";
+
+  const child = ref(null);
+
+  onMounted(() => {
+    // child.value will hold an instance of <Child />
+  });
+</script>
+
+<template>
+  <Child ref="child" />
+</template>
+```
+
+## Components Basics:
+
+- Components allow us to split the UI into independent and reusable pieces,
+
+```html
+<script setup>
+  import ButtonCounter from "./ButtonCounter.vue";
+</script>
+
+<template>
+  <h1>Here is a child component!</h1>
+  <ButtonCounter />
+</template>
+```

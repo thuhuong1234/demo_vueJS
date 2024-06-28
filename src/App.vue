@@ -11,8 +11,9 @@
       <p class="status-item">Not Completed: {{ notCompletedTodos }}</p>
     </div>
     <div class="todo-main-right">
-      <form @submit.prevent="addTodo">
+      <form @submit.prevent="addTodo(todoInput)">
         <input
+          ref="todoInputRef"
           type="text"
           class="todo-input"
           placeholder="Enter todo ..."
@@ -22,7 +23,7 @@
           type="button"
           value="Add"
           class="todo-add"
-          @click="addTodo"
+          @click="addTodo(todoInput)"
           :disabled="todoInput === ''"
         />
       </form>
@@ -31,7 +32,7 @@
           <input
             type="checkbox"
             :checked="todo.completed"
-            @click="handleCompleteTodo(todo)"
+            @click="handleCompleteTodo(todo, !todo.completed)"
           />
           <span :class="{ '-done': todo.completed }">{{ todo.title }}</span>
           <input
@@ -47,41 +48,70 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 
-const todoLists = ref([
-  { id: 1, title: "TKPM", completed: false },
-  { id: 2, title: "ATBMTT", completed: true },
-  { id: 3, title: "JAVA", completed: true },
-  { id: 4, title: "HTML", completed: true },
-]);
+const todoLists = ref([]);
 
-const deleteTodo = (todo) => {
-  todoLists.value = todoLists.value.filter((item) => item.id !== todo.id);
+const deleteTodo = async (todo) => {
+  const response = await fetch(
+    `https://jsonplaceholder.typicode.com/todos/${todo.id}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (response.ok) {
+    todoLists.value = todoLists.value.filter((item) => item.id !== todo.id);
+  }
 };
 
-const handleCompleteTodo = (todo) => {
-  todoLists.value = todoLists.value.map((item) => {
-    if (item.id === todo.id) {
-      return {
-        ...item,
-        completed: !item.completed,
-      };
+const handleCompleteTodo = async (todo, completed) => {
+  const response = await fetch(
+    `https://jsonplaceholder.typicode.com/todos/${todo.id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        completed,
+      }),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8",
+      },
     }
-    return item;
-  });
+  );
+
+  if (response.ok) {
+    todoLists.value = todoLists.value.map((item) => {
+      if (item.id === todo.id) {
+        return { ...item, completed };
+      }
+      return item;
+    });
+  }
 };
 
 const todoInput = ref("");
 
-const addTodo = () => {
-  if (todoInput.value.trim() !== "") {
-    todoLists.value.push({
-      id: todoLists.value.length + 1,
-      title: todoInput.value,
-      completed: false,
-    });
+const addTodo = async (title) => {
+  if (title === "") {
+    return;
+  }
+  const newTodo = {
+    title,
+    completed: false,
+  };
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos", {
+    method: "POST",
+    body: JSON.stringify({
+      ...newTodo,
+    }),
+    headers: {
+      "Content-type": "application/json; charset=UTF-8",
+    },
+  });
+  const { id } = await response.json();
+  if (response.ok) {
     todoInput.value = "";
+
+    todoLists.value.unshift({ id, ...newTodo });
   }
 };
 
@@ -91,6 +121,17 @@ const completedTodos = computed(() => {
 
 const notCompletedTodos = computed(() => {
   return todoLists.value.filter((todo) => !todo.completed).length;
+});
+const handleFetchTodos = async () => {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos");
+  const data = await response.json();
+  todoLists.value = data;
+  console.log(todoLists.value);
+};
+handleFetchTodos();
+const todoInputRef = ref("");
+onMounted(() => {
+  todoInputRef.value.focus();
 });
 </script>
 
